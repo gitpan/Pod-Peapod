@@ -35,7 +35,7 @@ sub OutputTocText
 
 	my $text = $parser->GetAttribute('_text_string');
 
-	my $fontstring = $parser->GetAttribute('_font_string');
+	my $fontstring = $parser->_current_font;
 
 	my $position_marker = $parser->GetAttribute('_position_marker');
 	$position_marker .= '_start';
@@ -58,7 +58,7 @@ sub OutputTocNewLine
 {
 	my $parser=shift(@_);
 	my $toc_widget = $parser->{_toc_widget};
-	$toc_widget->insert('insert', "\n\n");
+	$toc_widget->insert('insert', "\n");
 }
 
 
@@ -71,6 +71,10 @@ sub OutputPodText
 	my $pod_widget = $parser->{_pod_widget};
 	my $position_marker = $parser->GetAttribute('_position_marker');
 
+
+	my $left_margin = $parser->GetAttribute('_left_margin');
+	my $left_margin_tag = 'Column'.$left_margin;
+
 	my $start_marker = $position_marker . '_start';
 	my $end_marker = $position_marker . '_end';
 
@@ -78,9 +82,9 @@ sub OutputPodText
 	$pod_widget->markGravity($start_marker, 'left');
 
 	my $text = $parser->GetAttribute('_text_string');
-	my $fontstring = $parser->GetAttribute('_font_string');
+	my $fontstring = $parser->_current_font;
 
-	$pod_widget->insert('insert', $text, $fontstring);
+	$pod_widget->insert('insert', $text, [$fontstring,$left_margin_tag]);
 
 	$pod_widget->markSet($end_marker, $pod_widget->index('insert'));
 	$pod_widget->markGravity($end_marker, 'left');
@@ -191,12 +195,12 @@ for my $family qw(lucida courier)
 							-weight=>$weight,
 							-slant =>$slant,
 							],
-						-underline => $underval,
+						,
 						);
 
 
-					$pod->tagConfigure(@args);
-					$toc->tagConfigure(@args);
+					$pod->tagConfigure(@args, -underline => $underval);
+					$toc->tagConfigure(@args, -underline => 0);
 
 
 					# warn "tagname is '$tagname'";

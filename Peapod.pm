@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = '0.41';
+our $VERSION = '0.42';
 
 use Data::Dumper;
 
@@ -162,6 +162,10 @@ sub _handle_element_start
 		my $section_number = $parser->GetAttribute('_section_number');
 		$parser->SetAttribute('_text_string',$section_number);
 		$parser->OutputPodText;
+
+		my $head_index = $parser->GetAttribute('_head_index');
+		my $pad = ' 'x($head_index);
+		$parser->SetAttribute('_text_string',$pad.$section_number);
 		$parser->OutputTocText;
 		}
 
@@ -553,17 +557,24 @@ sub _track_font
 			$parser->SetAttribute('_font_underline', 'yesunder');
 			}
 
-		my $font_string = 
-			  ($parser->GetAttribute('_font_family'))
-			. ($parser->GetAttribute('_font_size'))
-			. ($parser->GetAttribute('_font_weight'))
-			. ($parser->GetAttribute('_font_slant'))
-			. ($parser->GetAttribute('_font_underline'))
-			;
-
-		$parser->SetAttribute('_font_string', $font_string);
 
 		}
+}
+
+#######################################################################
+sub _current_font
+#######################################################################
+{
+	my $parser=shift(@_);
+	my $font_string = 
+		  ($parser->GetAttribute('_font_family'))
+		. ($parser->GetAttribute('_font_size'))
+		. ($parser->GetAttribute('_font_weight'))
+		. ($parser->GetAttribute('_font_slant'))
+		. ($parser->GetAttribute('_font_underline'))
+		;
+
+	return $font_string;
 }
 
 #######################################################################
@@ -604,6 +615,13 @@ sub _track_left_margin
 			{
 			$indent=$parser->GetAttribute('indent');
 			}
+		elsif(!($parser->ExistsAttribute('~type')))
+			{
+			if($parser->ExistsPreviousAttribute('~type'))	
+				{
+				$indent += 4;
+				}
+			}
 
 		push(@{$parser->{_accumulated_indent_values}}, $indent);
 		}
@@ -613,6 +631,8 @@ sub _track_left_margin
 		$indent = pop(@{$parser->{_accumulated_indent_values}});
 		$indent *= -1;
 		}
+
+# warn "indent is '$indent'";
 
 	$parser->SetAttribute('_left_margin', 
 	$parser->GetAttribute('_left_margin') + $indent);
@@ -776,6 +796,14 @@ sub _handle_text
 	my $text = shift(@_);
 
 	my $element = $parser->GetAttribute('_element_type');
+
+	# put bullet in front of bulleted items
+	if($element eq 'item_bullet')
+		{
+		my $bullet = $parser->GetAttribute('~orig_content');
+		$text = $bullet.' '.$text;
+		}
+
 	$parser->SetAttribute('_text_string', $text);
 
 	if($parser->SearchHistoryForAttributeMatchingValue('_element_type', 'head'))

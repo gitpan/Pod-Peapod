@@ -11,3 +11,4 @@ local $/;
 my $string = <>;
 
 $obj->parse_string_document($string);
+

@@ -12,6 +12,7 @@ use  Pod::Peapod;
 our @ISA;
 BEGIN { push(@ISA,'Pod::Peapod'); }
 
+
 #######################################################################
 sub New
 #######################################################################
@@ -30,6 +31,21 @@ sub New
 	$parser->{_character_column}=0;
 	
 	return $parser;
+}
+
+
+#######################################################################
+sub parse_string_document
+#######################################################################
+{
+	my ($parser, $string)=@_;
+
+	# call method to clear any preexisting document
+
+	$parser->SUPER::parse_string_document($string);
+
+	# call method to post process
+	print "\n";
 }
 
 #######################################################################
@@ -66,13 +82,15 @@ sub FormatText
 		my $line = shift(@lines);
 		while(length($line))
 			{
+			$parser->FixLeftMargin;
+
 			my $width = $parser->{_text_width};
 			my $column = $parser->{_character_column};
 			my $max_char = $width - $column;
 
 			if($max_char ==0)
 				{ 
-				$parser->OutputNewLine; 
+				$parser->OutputPodSingleNewLine; 
 				redo;
 				}
 			# get substring to end of this line and print it.
@@ -96,17 +114,17 @@ sub FormatText
 
 			# if there is more text in this line
 			if(length($line))
-				{ $parser->OutputNewLine; }
+				{ $parser->OutputPodSingleNewLine; }
 
 			# or no more text in this line 
 			# but there are other lines.
 			elsif(scalar(@lines))
-				{ $parser->OutputNewLine; }
+				{ $parser->OutputPodSingleNewLine; }
 
 			# or no more text, no more lines,
 			# but input string ended in \n
 			elsif($text =~ m{\n$}m)
-				{ $parser->OutputNewLine; }
+				{ $parser->OutputPodSingleNewLine; }
 
 			else
 				{
@@ -123,24 +141,52 @@ sub FormatText
 }
 
 #######################################################################
-sub OutputNewLine
+sub FixLeftMargin
 #######################################################################
 {
 	my $parser=shift(@_);
-	print "\n";
+
+	my $cur_col = $parser->{_character_column};
+
 	my $left_margin=0;
 	if($parser->ExistsAttribute('_left_margin'))
 		{
 		$left_margin = $parser->GetAttribute('_left_margin');
 		}
-	my $prefix = ' 'x($left_margin);
-	print $prefix;
 
-	$parser->{_character_column}=$left_margin;
+	my $diff = $left_margin - $cur_col;
+
+	if($diff>0)
+		{
+		my $prefix = ' 'x($diff);
+		print $prefix;
+		$parser->{_character_column}=$left_margin;
+		}
 }
 
 #######################################################################
-sub OutputText
+sub OutputPodSingleNewLine
+#######################################################################
+{
+	my $parser=shift(@_);
+	print "\n";
+	$parser->{_character_column}=0;
+	$parser->FixLeftMargin;
+}
+
+
+#######################################################################
+sub OutputPodNewLine
+#######################################################################
+{
+	my $parser=shift(@_);
+	print "\n\n";
+	$parser->{_character_column}=0;
+	$parser->FixLeftMargin;
+}
+
+#######################################################################
+sub OutputPodText
 #######################################################################
 {
 	my $parser=shift(@_);
@@ -152,9 +198,18 @@ sub OutputText
 
 
 #######################################################################
-sub OutputTableOfContents
+sub OutputTocText
 #######################################################################
 {
 
 }
+
+#######################################################################
+sub OutputTocNewLine
+#######################################################################
+{
+
+}
+
+
 

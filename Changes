@@ -69,4 +69,14 @@ Revision history for Perl extension Tk::Peapod.
 	- need to get indenting and links working on Tk viewer.
 	- also, double check that font for code is right.
 
+0.42	- code uses correct font.
+	- fix bullets and indents for bullet subparagraphs.
+	- handle left margin more accurately.
+	- the POD to text converter has been improved.
+	-	bullets, indents, and line spacing
+	- the Tkpeapod has been improved.
+	-	bullets and indents.
+	- Visually, the sample.pod looks good.
+	-
+	- still need to get links working.
 
