@@ -49,3 +49,24 @@ Revision history for Perl extension Tk::Peapod.
 	-	with page numbers and varying font sizes, etc.)
 	- Started a Pod::Peapod::Text class which uses Base.pm
 	-	and does a POD to text conversion with very little code.
+
+0.41	- The base class is now Pod::Peapod. All derived classes will be under
+	- Pod::Peapod, such as Pod::Peapod::Text which is a simple POD
+	- to text converter (in progress).
+	- Cleaned up Pod::Peapod so that there is a distinction between 
+	- the following methods: Output (Toc/Pod) (Text/NewLine).
+	- Had to be a little more intelligent about handling headers.
+	- =head This contains I<italics> in its text
+	- The header above would get hosed because I<> was a new element
+	- and it wouldn't see it as a header anymore, but then 'in its text'
+	- was back to being a header again. So basically, 'italics'
+	- would get dropped from a header.
+	- Tkpeapod has been polished off. scrollers are created for each
+	- Text widget so you can scroll Toc and Pod independently.
+	- Running the Tk pod viewer on Tk::Text.pm's POD looks like a 
+	- its getting there.
+	-
+	- need to get indenting and links working on Tk viewer.
+	- also, double check that font for code is right.
+
+

@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = '0.40';
+our $VERSION = '0.41';
 
 use Data::Dumper;
 
@@ -43,6 +43,8 @@ sub New
 {
 	my ($class) = @_;
 	my $parser = $class->SUPER::new();
+	$parser->{_show_section_numbers}=1;
+
 	$parser->{_current_attributes}=[ {} ];
 	$parser->SetAttribute('_left_margin',0);
 	return $parser;
@@ -80,6 +82,7 @@ sub _handle_element_start
 #######################################################################
 {
 	my $parser = shift(@_);
+
 	my $element= shift(@_);
 	my $attrs = shift(@_);
 
@@ -117,12 +120,17 @@ sub _handle_element_start
 		{
 		if($start_new_line_for_element{$element})
 			{
-			$parser->OutputNewLine;
+			$parser->OutputPodNewLine;
 			}
 		}
 	else
 		{
 		die "Error: unknown element type '$element'";
+		}
+
+	if($element eq 'head')
+		{
+		$parser->OutputTocNewLine;
 		}
 
 	#############################################################
@@ -141,31 +149,28 @@ sub _handle_element_start
 	#############################################################
 	$parser->TrackGeneratedAttributes;
 
+	#############################################################
+	# handle section number if enabled.
+	#############################################################
+	if(
+		1 
+		and ($element eq 'head')
+		and exists($parser->{_show_section_numbers})
+		and       ($parser->{_show_section_numbers})
+	)
+		{ 
+		my $section_number = $parser->GetAttribute('_section_number');
+		$parser->SetAttribute('_text_string',$section_number);
+		$parser->OutputPodText;
+		$parser->OutputTocText;
+		}
+
+	#############################################################
+	# call any specific element handlers that have been declared.
+	#############################################################
 	$parser->_specific_element_handler;
 }
 
-
-#######################################################################
-# use the following methods to get a current attribute value
-#######################################################################
-sub GetAttribute
-#######################################################################
-{
-	my $parser=shift(@_);
-	my $attribute=shift(@_);
-
-	croak "Too many parameters to GetAttribute" if(scalar(@_));
-
-	my $value;
-
-	eval
-		{
-		$value = $parser->{_current_attributes}->[-1]->{$attribute};
-		};
-	croak($@) if ($@);
-
-	return $value;
-}
 
 #######################################################################
 # croak gets confused and goes too far back up the call chain sometimes.
@@ -185,6 +190,69 @@ sub diecaller
 	my $string = "$error_string at $module line $line\n";
 	die $string;
 
+}
+
+
+#######################################################################
+# use the following methods to search for existence of attribute 
+# anywhere in the array of attribute history.
+# might have 'head' followed by 'I' (Italic), and will want the
+# Italicized text to also be part of the 'head' element.
+#
+# this method will allow you to see if the 'history'
+# has an attribute '_element_type' with a value of 'head'
+#######################################################################
+sub SearchHistoryForAttributeMatchingValue
+#######################################################################
+{
+	my $parser=shift(@_);
+	my $attribute=shift(@_);
+	diecaller("not enough parameters to SearchHistoryForAttributeMatchingValue")if(scalar(@_)==0);
+	my $value=shift(@_);
+
+	diecaller("Too many parameters to SearchHistoryForAttributeMatchingValue") if(scalar(@_));
+
+	my $match=0;
+	my $ref = $parser->{_current_attributes};
+
+	#eval
+	#	{
+		foreach my $attrs (@$ref)
+			{
+			if( exists($attrs->{$attribute}) and ($attrs->{$attribute} eq $value) )
+					{
+					$match=1 ;
+					last;
+					}
+			}
+	#	};
+	#diecaller($@) if ($@);
+
+	return $match;
+}
+
+
+
+#######################################################################
+# use the following methods to get a current attribute value
+#######################################################################
+sub GetAttribute
+#######################################################################
+{
+	my $parser=shift(@_);
+	my $attribute=shift(@_);
+
+	diecaller("Too many parameters to GetAttribute") if(scalar(@_));
+
+	my $value;
+
+	eval
+		{
+		$value = $parser->{_current_attributes}->[-1]->{$attribute};
+		};
+	diecaller($@) if ($@);
+
+	return $value;
 }
 
 #######################################################################
@@ -437,11 +505,27 @@ sub _track_font
 
 	if($startend eq 'start')
 		{
-		$parser->SetAttribute('_font_family','lucida');		# lucida, courier
-		$parser->SetAttribute('_font_size', 4);			# 1,2,3,4
-		$parser->SetAttribute('_font_weight', 'normal');	# normal, bold
-		$parser->SetAttribute('_font_slant', 'roman'); 		# roman, italic
-		$parser->SetAttribute('_font_underline', 'nounder');	# yesunder, nounder 
+		if($parser->ExistsPreviousAttribute('_font_family'))
+			{
+			$parser->SetAttribute('_font_family',
+				$parser->GetPreviousAttribute('_font_family') );
+			$parser->SetAttribute('_font_size', 
+				$parser->GetPreviousAttribute('_font_size') );
+			$parser->SetAttribute('_font_weight', 	
+				$parser->GetPreviousAttribute('_font_weight') );
+			$parser->SetAttribute('_font_slant', 
+				$parser->GetPreviousAttribute('_font_slant') );
+			$parser->SetAttribute('_font_underline', 
+				$parser->GetPreviousAttribute('_font_underline') );
+			}
+		else
+			{
+			$parser->SetAttribute('_font_family','lucida');		# lucida, courier
+			$parser->SetAttribute('_font_size', 4);			# 1,2,3,4
+			$parser->SetAttribute('_font_weight', 'normal');	# normal, bold	
+			$parser->SetAttribute('_font_slant', 'roman'); 		# roman, italic
+			$parser->SetAttribute('_font_underline', 'nounder');	# yesunder, nounder 
+			}
 
 		if(0) {}
 		elsif($element eq 'C')
@@ -643,13 +727,28 @@ sub _track_section_number
 # insert a dummy method here. subclass can override this method and
 # have it do whatever it needs.
 #######################################################################
-sub OutputNewLine
+sub OutputPodNewLine
 #######################################################################
 {
 	my $parser = shift(@_);
 
-	print "calling Base default method for 'OutputNewLine'\n";
+	print "calling Base default method for 'OutputPodNewLine'\n";
 }
+
+
+#######################################################################
+# insert a dummy method here. subclass can override this method and
+# have it do whatever it needs.
+#######################################################################
+sub OutputTocNewLine
+#######################################################################
+{
+	my $parser = shift(@_);
+
+	print "calling Base default method for 'OutputTocNewLine'\n";
+}
+
+
 
 
 #######################################################################
@@ -672,16 +771,18 @@ sub _handle_text
 #######################################################################
 {
 	my $parser = shift(@_);
+
+#print Dumper \@_;
 	my $text = shift(@_);
 
 	my $element = $parser->GetAttribute('_element_type');
 	$parser->SetAttribute('_text_string', $text);
 
-	if($element eq 'head')
+	if($parser->SearchHistoryForAttributeMatchingValue('_element_type', 'head'))
 		{
 		my $toc_text_ref = $parser->GetAttribute('_toc_text_ref');
 		$$toc_text_ref=$text;
-		$parser->OutputTableOfContents;
+		$parser->OutputTocText;
 		}
 
 	###################################################################
@@ -692,7 +793,7 @@ sub _handle_text
 	# a callback routine so the user can click on link and
 	# it will take the user to the file.
 	#
-	# otherwise, if no special handler exists, call normal OutputText.
+	# otherwise, if no special handler exists, call normal OutputPodText.
 	###################################################################
 	my $method = 'output_'.$element;
 
@@ -702,7 +803,7 @@ sub _handle_text
 		}
 	else
 		{
-		$parser->OutputText;
+		$parser->OutputPodText;
 		}
 }
 
@@ -710,28 +811,27 @@ sub _handle_text
 # insert a dummy method here. subclass can override this method and
 # have it do whatever it needs.
 #######################################################################
-sub OutputText
+sub OutputPodText
 #######################################################################
 {
 	my $parser = shift(@_);
 	my $text_string = $parser->GetAttribute('_text_string');
 
-	print "calling Base default method for 'OutputText'\n";
+	print "calling Base default method for 'OutputPodText'\n";
 	print "$text_string \n";
 }
 
 
 #######################################################################
-sub OutputTableOfContents
+sub OutputTocText
 #######################################################################
 {
 	my $parser = shift(@_);
 	my $text_string = $parser->GetAttribute('_text_string');
-	my $section_number = $parser->GetAttribute('_section_number');
 
-	print "calling Base default method for 'OutputTableOfContents'\n";
+	print "calling Base default method for 'OutputTocText'\n";
 	print "$text_string \n";
-	print "$section_number \n";
+
 }
 
 

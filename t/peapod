@@ -30,8 +30,7 @@ my $peapod_frame = $top->Frame->pack
 ## the text frame and the text window in the frame are both 
 ## set up for autosizing.
 
-my $peapod = $peapod_frame->Scrolled(
-	'Peapod',
+my $peapod = $peapod_frame->Peapod(
 	exportselection => 'true',  # 'sel' tag is associated with selections
 	# initial height, if it isnt 1, then autosizing fails 
 	# once window shrinks below height
